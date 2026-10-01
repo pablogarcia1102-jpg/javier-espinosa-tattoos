@@ -14,7 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initLazyLoading();
   initScrollReveal();
   initCounterAnimation();
-  initTestimonialsCarousel();
   initWhatsAppFloat();
   initScrollToTop();
   initSmoothScroll();
@@ -286,83 +285,6 @@ function animateCounter(element) {
   }
 
   requestAnimationFrame(update);
-}
-
-// ═══════════════════════ TESTIMONIALS CAROUSEL ═══════════════════════
-function initTestimonialsCarousel() {
-  const track = document.getElementById('testimonialTrack');
-  const cards = track.querySelectorAll('.testimonial-card');
-  const prevBtn = document.getElementById('testimonialPrev');
-  const nextBtn = document.getElementById('testimonialNext');
-  const dotsContainer = document.getElementById('testimonialDots');
-
-  let currentSlide = 0;
-  let autoplayInterval;
-
-  // Create dots
-  cards.forEach((_, index) => {
-    const dot = document.createElement('button');
-    dot.classList.add('testimonial-dot');
-    dot.setAttribute('aria-label', `Testimonio ${index + 1}`);
-    if (index === 0) dot.classList.add('active');
-    dot.addEventListener('click', () => goToSlide(index));
-    dotsContainer.appendChild(dot);
-  });
-
-  function goToSlide(index) {
-    currentSlide = index;
-    track.style.transform = `translateX(-${currentSlide * 100}%)`;
-    
-    // Update dots
-    dotsContainer.querySelectorAll('.testimonial-dot').forEach((dot, i) => {
-      dot.classList.toggle('active', i === currentSlide);
-    });
-
-    // Reset autoplay
-    resetAutoplay();
-  }
-
-  function navigate(direction) {
-    const newSlide = (currentSlide + direction + cards.length) % cards.length;
-    goToSlide(newSlide);
-  }
-
-  function resetAutoplay() {
-    clearInterval(autoplayInterval);
-    autoplayInterval = setInterval(() => navigate(1), 5000);
-  }
-
-  prevBtn.addEventListener('click', () => navigate(-1));
-  nextBtn.addEventListener('click', () => navigate(1));
-
-  // Touch/swipe support
-  let touchStartX = 0;
-  let touchEndX = 0;
-
-  track.addEventListener('touchstart', (e) => {
-    touchStartX = e.changedTouches[0].screenX;
-  }, { passive: true });
-
-  track.addEventListener('touchend', (e) => {
-    touchEndX = e.changedTouches[0].screenX;
-    const diff = touchStartX - touchEndX;
-    
-    if (Math.abs(diff) > 50) {
-      navigate(diff > 0 ? 1 : -1);
-    }
-  }, { passive: true });
-
-  // Start autoplay
-  resetAutoplay();
-
-  // Pause on hover
-  track.closest('.testimonials-carousel').addEventListener('mouseenter', () => {
-    clearInterval(autoplayInterval);
-  });
-
-  track.closest('.testimonials-carousel').addEventListener('mouseleave', () => {
-    resetAutoplay();
-  });
 }
 
 // ═══════════════════════ WHATSAPP FLOAT ═══════════════════════

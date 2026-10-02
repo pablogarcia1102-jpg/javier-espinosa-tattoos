@@ -1,154 +1,116 @@
 /* ═══════════════════════════════════════════════════════════
    JAVIER ESPINOSA — TATTOO ARTIST PORTFOLIO
-   Main JavaScript — Gallery, Lightbox, Animations, Carousel
+   Main JavaScript — Responsive Navigation, Gallery, Lightbox
    ═══════════════════════════════════════════════════════════ */
 
 import './style.css';
 
-// ─── DOM Ready ───
 document.addEventListener('DOMContentLoaded', () => {
   initNavbar();
-  initHamburger();
+  initMobileMenu();
   initGalleryFilters();
   initLightbox();
   initLazyLoading();
   initScrollReveal();
-  initCounterAnimation();
-  initWhatsAppFloat();
-  initScrollToTop();
+  initWhatsAppFab();
   initSmoothScroll();
 });
 
-// ═══════════════════════ NAVBAR ═══════════════════════
+// ═══════════════════════ NAVBAR SCROLL STATE ═══════════════════════
 function initNavbar() {
   const navbar = document.getElementById('navbar');
-  let lastScroll = 0;
+  if (!navbar) return;
 
-  window.addEventListener('scroll', () => {
-    const currentScroll = window.scrollY;
-    
-    if (currentScroll > 50) {
+  let ticking = false;
+
+  const handleScroll = () => {
+    if (window.scrollY > 40) {
       navbar.classList.add('scrolled');
     } else {
       navbar.classList.remove('scrolled');
     }
-    
-    lastScroll = currentScroll;
+    ticking = false;
+  };
+
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      window.requestAnimationFrame(handleScroll);
+      ticking = true;
+    }
   }, { passive: true });
 }
 
-// ═══════════════════════ HAMBURGER MENU ═══════════════════════
-function initHamburger() {
-  const hamburger = document.getElementById('hamburger');
-  const navLinks = document.getElementById('navLinks');
+// ═══════════════════════ RESPONSIVE MOBILE MENU ═══════════════════════
+function initMobileMenu() {
+  const menuToggle = document.getElementById('menuToggle');
+  const navMenu = document.getElementById('navMenu');
+  if (!menuToggle || !navMenu) return;
 
-  hamburger.addEventListener('click', () => {
-    hamburger.classList.toggle('active');
-    navLinks.classList.toggle('active');
-    document.body.style.overflow = navLinks.classList.contains('active') ? 'hidden' : '';
-  });
+  const toggleMenu = () => {
+    const isOpen = menuToggle.classList.toggle('active');
+    navMenu.classList.toggle('active');
+    menuToggle.setAttribute('aria-expanded', String(isOpen));
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+  };
 
-  // Close on link click
-  navLinks.querySelectorAll('.nav-link').forEach(link => {
+  menuToggle.addEventListener('click', toggleMenu);
+
+  // Close when clicking any nav link
+  navMenu.querySelectorAll('.nav-link, .btn').forEach(link => {
     link.addEventListener('click', () => {
-      hamburger.classList.remove('active');
-      navLinks.classList.remove('active');
+      menuToggle.classList.remove('active');
+      navMenu.classList.remove('active');
+      menuToggle.setAttribute('aria-expanded', 'false');
       document.body.style.overflow = '';
     });
+  });
+
+  // Close on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && navMenu.classList.contains('active')) {
+      toggleMenu();
+    }
   });
 }
 
 // ═══════════════════════ GALLERY FILTERS ═══════════════════════
 function initGalleryFilters() {
-  const filterBtns = document.querySelectorAll('.filter-btn');
-  const galleryItems = document.querySelectorAll('.gallery-item');
+  const filterPills = document.querySelectorAll('.filter-pill');
+  const galleryCards = document.querySelectorAll('.gallery-card');
+  if (!filterPills.length || !galleryCards.length) return;
 
-  filterBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const filter = btn.dataset.filter;
+  filterPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      const filter = pill.dataset.filter;
 
-      // Update active state
-      filterBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+      // Update pill active states
+      filterPills.forEach(p => {
+        p.classList.remove('active');
+        p.setAttribute('aria-selected', 'false');
+      });
+      pill.classList.add('active');
+      pill.setAttribute('aria-selected', 'true');
 
-      // Filter items with animation
-      galleryItems.forEach((item, index) => {
-        const category = item.dataset.category;
-        const shouldShow = filter === 'all' || category === filter;
+      // Filter gallery cards with smooth stagger
+      let visibleIndex = 0;
+      galleryCards.forEach(card => {
+        const category = card.dataset.category;
+        const matches = filter === 'all' || category === filter;
 
-        if (shouldShow) {
-          item.classList.remove('hidden');
-          item.style.animation = `fadeInUp 0.4s ease-out ${index * 0.05}s both`;
+        if (matches) {
+          card.classList.remove('hidden');
+          card.style.animation = `cardFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) ${visibleIndex * 0.04}s both`;
+          visibleIndex++;
         } else {
-          item.classList.add('hidden');
-          item.style.animation = '';
+          card.classList.add('hidden');
+          card.style.animation = '';
         }
       });
     });
   });
 }
 
-// ═══════════════════════ LAZY LOADING + IMAGE OPTIMIZATION ═══════════════════════
-function initLazyLoading() {
-  const lazyImages = document.querySelectorAll('.lazy');
-
-  if ('IntersectionObserver' in window) {
-    const imageObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const img = entry.target;
-          loadImage(img);
-          imageObserver.unobserve(img);
-        }
-      });
-    }, {
-      rootMargin: '100px 0px', // Start loading 100px before visible
-      threshold: 0.01
-    });
-
-    lazyImages.forEach(img => imageObserver.observe(img));
-  } else {
-    // Fallback for older browsers
-    lazyImages.forEach(img => loadImage(img));
-  }
-}
-
-function loadImage(img) {
-  const src = img.dataset.src;
-  if (!src) return;
-
-  const preloadImg = new Image();
-  preloadImg.onload = () => {
-    img.src = src;
-    img.classList.add('loaded');
-  };
-
-  preloadImg.onerror = () => {
-    // If WebP fails, try fallback JPG
-    if (src.endsWith('.webp')) {
-      const jpgSrc = src.replace('.webp', '.jpg');
-      const fallbackImg = new Image();
-      fallbackImg.onload = () => {
-        img.src = jpgSrc;
-        img.classList.add('loaded');
-      };
-      fallbackImg.onerror = () => {
-        img.closest('.gallery-item-inner').style.background = 
-          'linear-gradient(135deg, #1a1a1a, #222)';
-        img.style.display = 'none';
-      };
-      fallbackImg.src = jpgSrc;
-    } else {
-      img.closest('.gallery-item-inner').style.background = 
-        'linear-gradient(135deg, #1a1a1a, #222)';
-      img.style.display = 'none';
-    }
-  };
-
-  preloadImg.src = src;
-}
-
-// ═══════════════════════ LIGHTBOX ═══════════════════════
+// ═══════════════════════ LIGHTBOX VIEWER ═══════════════════════
 function initLightbox() {
   const lightbox = document.getElementById('lightbox');
   const lightboxImg = document.getElementById('lightboxImg');
@@ -157,17 +119,20 @@ function initLightbox() {
   const lightboxNext = document.getElementById('lightboxNext');
   const lightboxCounter = document.getElementById('lightboxCounter');
 
-  let currentIndex = 0;
-  let visibleImages = [];
+  if (!lightbox || !lightboxImg) return;
 
-  function getVisibleImages() {
-    return Array.from(document.querySelectorAll('.gallery-item:not(.hidden) .gallery-img'));
+  let currentIndex = 0;
+  let activeCards = [];
+
+  function getVisibleCards() {
+    return Array.from(document.querySelectorAll('.gallery-card:not(.hidden) .gallery-card-img'));
   }
 
   function openLightbox(index) {
-    visibleImages = getVisibleImages();
-    currentIndex = index;
-    updateLightboxImage();
+    activeCards = getVisibleCards();
+    if (!activeCards.length) return;
+    currentIndex = (index >= 0 && index < activeCards.length) ? index : 0;
+    updateImage();
     lightbox.classList.add('active');
     document.body.style.overflow = 'hidden';
   }
@@ -177,36 +142,40 @@ function initLightbox() {
     document.body.style.overflow = '';
   }
 
-  function updateLightboxImage() {
-    const img = visibleImages[currentIndex];
-    if (img) {
-      lightboxImg.src = img.src || img.dataset.src;
-      lightboxImg.alt = img.alt;
-      lightboxCounter.textContent = `${currentIndex + 1} / ${visibleImages.length}`;
+  function updateImage() {
+    const targetImg = activeCards[currentIndex];
+    if (targetImg) {
+      lightboxImg.src = targetImg.src || targetImg.dataset.src;
+      lightboxImg.alt = targetImg.alt || 'Tatuaje ampliado Javier Espinosa';
+      if (lightboxCounter) {
+        lightboxCounter.textContent = `${currentIndex + 1} / ${activeCards.length}`;
+      }
     }
   }
 
   function navigate(direction) {
-    currentIndex = (currentIndex + direction + visibleImages.length) % visibleImages.length;
-    updateLightboxImage();
+    if (!activeCards.length) return;
+    currentIndex = (currentIndex + direction + activeCards.length) % activeCards.length;
+    updateImage();
   }
 
-  // Click on gallery items
-  document.querySelectorAll('.gallery-item-inner').forEach((item, index) => {
-    item.addEventListener('click', () => {
-      const visibleItems = Array.from(document.querySelectorAll('.gallery-item:not(.hidden)'));
-      const actualIndex = visibleItems.indexOf(item.closest('.gallery-item'));
-      openLightbox(actualIndex >= 0 ? actualIndex : index);
+  // Bind clicks on gallery cards
+  document.querySelectorAll('.gallery-card-inner').forEach(cardInner => {
+    cardInner.addEventListener('click', () => {
+      const allVisible = Array.from(document.querySelectorAll('.gallery-card:not(.hidden)'));
+      const parentCard = cardInner.closest('.gallery-card');
+      const idx = allVisible.indexOf(parentCard);
+      openLightbox(idx);
     });
   });
 
-  lightboxClose.addEventListener('click', closeLightbox);
-  lightboxPrev.addEventListener('click', () => navigate(-1));
-  lightboxNext.addEventListener('click', () => navigate(1));
+  if (lightboxClose) lightboxClose.addEventListener('click', closeLightbox);
+  if (lightboxPrev) lightboxPrev.addEventListener('click', () => navigate(-1));
+  if (lightboxNext) lightboxNext.addEventListener('click', () => navigate(1));
 
   // Close on backdrop click
   lightbox.addEventListener('click', (e) => {
-    if (e.target === lightbox || e.target.classList.contains('lightbox-content')) {
+    if (e.target === lightbox || e.target.classList.contains('lightbox-container')) {
       closeLightbox();
     }
   });
@@ -214,112 +183,143 @@ function initLightbox() {
   // Keyboard navigation
   document.addEventListener('keydown', (e) => {
     if (!lightbox.classList.contains('active')) return;
-    
-    switch (e.key) {
-      case 'Escape': closeLightbox(); break;
-      case 'ArrowLeft': navigate(-1); break;
-      case 'ArrowRight': navigate(1); break;
-    }
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowLeft') navigate(-1);
+    if (e.key === 'ArrowRight') navigate(1);
   });
+
+  // Touch Swipe for mobile devices
+  let touchStartX = 0;
+  let touchEndX = 0;
+
+  lightbox.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+  }, { passive: true });
+
+  lightbox.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipe();
+  }, { passive: true });
+
+  function handleSwipe() {
+    const diff = touchEndX - touchStartX;
+    if (Math.abs(diff) > 45) {
+      if (diff > 0) {
+        navigate(-1); // Swipe right -> Previous
+      } else {
+        navigate(1);  // Swipe left -> Next
+      }
+    }
+  }
+}
+
+// ═══════════════════════ LAZY LOADING ═══════════════════════
+function initLazyLoading() {
+  const lazyImages = document.querySelectorAll('.lazy');
+  if (!lazyImages.length) return;
+
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          loadImg(img);
+          observer.unobserve(img);
+        }
+      });
+    }, {
+      rootMargin: '120px 0px',
+      threshold: 0.01
+    });
+
+    lazyImages.forEach(img => observer.observe(img));
+  } else {
+    lazyImages.forEach(img => loadImg(img));
+  }
+}
+
+function loadImg(img) {
+  const src = img.dataset.src;
+  if (!src) return;
+
+  const temp = new Image();
+  temp.onload = () => {
+    img.src = src;
+    img.classList.add('loaded');
+  };
+  temp.onerror = () => {
+    if (src.endsWith('.webp')) {
+      const fallback = src.replace('.webp', '.jpg');
+      img.src = fallback;
+      img.classList.add('loaded');
+    }
+  };
+  temp.src = src;
 }
 
 // ═══════════════════════ SCROLL REVEAL ═══════════════════════
 function initScrollReveal() {
-  const revealElements = document.querySelectorAll('.reveal-up, .reveal-left, .reveal-right');
+  const reveals = document.querySelectorAll('.reveal-up, .reveal-left, .reveal-right');
+  if (!reveals.length) return;
+
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    reveals.forEach(el => el.classList.add('revealed'));
+    return;
+  }
 
   if ('IntersectionObserver' in window) {
-    const revealObserver = new IntersectionObserver((entries) => {
+    const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           entry.target.classList.add('revealed');
-          revealObserver.unobserve(entry.target);
+          observer.unobserve(entry.target);
         }
       });
     }, {
-      threshold: 0.15,
-      rootMargin: '0px 0px -50px 0px'
+      threshold: 0.12,
+      rootMargin: '0px 0px -40px 0px'
     });
 
-    revealElements.forEach(el => revealObserver.observe(el));
+    reveals.forEach(el => observer.observe(el));
   } else {
-    revealElements.forEach(el => el.classList.add('revealed'));
+    reveals.forEach(el => el.classList.add('revealed'));
   }
 }
 
-// ═══════════════════════ COUNTER ANIMATION ═══════════════════════
-function initCounterAnimation() {
-  const counters = document.querySelectorAll('.stat-number');
+// ═══════════════════════ WHATSAPP FAB ═══════════════════════
+function initWhatsAppFab() {
+  const fab = document.getElementById('whatsappFloat');
+  if (!fab) return;
 
-  if ('IntersectionObserver' in window) {
-    const counterObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          animateCounter(entry.target);
-          counterObserver.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.5 });
-
-    counters.forEach(counter => counterObserver.observe(counter));
-  }
-}
-
-function animateCounter(element) {
-  const target = parseInt(element.dataset.count, 10);
-  const duration = 2000;
-  const start = performance.now();
-
-  function update(currentTime) {
-    const elapsed = currentTime - start;
-    const progress = Math.min(elapsed / duration, 1);
-    
-    // Ease out cubic
-    const eased = 1 - Math.pow(1 - progress, 3);
-    const current = Math.round(eased * target);
-    
-    element.textContent = current;
-    
-    if (progress < 1) {
-      requestAnimationFrame(update);
+  let shown = false;
+  const onScroll = () => {
+    if (!shown && window.scrollY > 200) {
+      fab.classList.add('visible');
+      shown = true;
+      window.removeEventListener('scroll', onScroll);
     }
-  }
+  };
 
-  requestAnimationFrame(update);
-}
-
-// ═══════════════════════ WHATSAPP FLOAT ═══════════════════════
-function initWhatsAppFloat() {
-  const whatsappBtn = document.getElementById('whatsappFloat');
-
+  window.addEventListener('scroll', onScroll, { passive: true });
+  // Fallback timer if user stays at top
   setTimeout(() => {
-    whatsappBtn.classList.add('visible');
-  }, 2000);
-}
-
-// ═══════════════════════ SCROLL TO TOP ═══════════════════════
-function initScrollToTop() {
-  const scrollTopBtn = document.getElementById('scrollTop');
-
-  window.addEventListener('scroll', () => {
-    if (window.scrollY > 600) {
-      scrollTopBtn.classList.add('visible');
-    } else {
-      scrollTopBtn.classList.remove('visible');
+    if (!shown) {
+      fab.classList.add('visible');
+      shown = true;
     }
-  }, { passive: true });
-
-  scrollTopBtn.addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
+  }, 2500);
 }
 
 // ═══════════════════════ SMOOTH SCROLL ═══════════════════════
 function initSmoothScroll() {
   document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', (e) => {
-      e.preventDefault();
-      const target = document.querySelector(anchor.getAttribute('href'));
+      const targetId = anchor.getAttribute('href');
+      if (targetId === '#' || targetId === '') return;
+      
+      const target = document.querySelector(targetId);
       if (target) {
+        e.preventDefault();
         target.scrollIntoView({ behavior: 'smooth' });
       }
     });
